@@ -1,10 +1,22 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#include <dlfcn.h>
 #import "LauncherPreferences.h"
 #import "UIKit+hook.h"
 #import "utils.h"
 
 __weak UIWindow *mainWindow, *externalWindow;
+
+// Resolves _UISolariumEnabled at runtime to avoid link-time errors on older iOS versions.
+// Returns NO if the symbol is unavailable.
+BOOL isSolariumEnabled(void) {
+    static BOOL (*func)(void) = NULL;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        func = dlsym(RTLD_DEFAULT, "_UISolariumEnabled");
+    });
+    return func ? func() : NO;
+}
 
 void swizzle(Class class, SEL originalAction, SEL swizzledAction) {
     method_exchangeImplementations(class_getInstanceMethod(class, originalAction), class_getInstanceMethod(class, swizzledAction));
